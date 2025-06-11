@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Editar {{ paciente.nome_completo }} - Sistema de Gerenciamento{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-user-edit me-2 text-warning"></i>
+                Editar Paciente
+            </h2>
+            <div>
+                <a href="{{ url_for('perfil_paciente', id=paciente.id) }}" class="btn btn-info me-2">
+                    <i class="fas fa-eye me-2"></i>Ver Perfil
+                </a>
+                <a href="{{ url_for('pesquisar_pacientes') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h6 class="mb-2">
+                <i class="fas fa-info-circle me-2"></i>Editando dados do paciente:
+            </h6>
+            <strong>{{ paciente.nome_completo }}</strong> - CPF: {{ paciente.cpf | format_cpf }}
+            <br>
+            <small class="text-muted">
+                Cadastrado em: {{ paciente.data_registro.strftime('%d/%m/%Y') }}
+            </small>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-edit me-2"></i>Atualizar Informações do Paciente
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="editarPacienteForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <!-- Nome Completo -->
+                        <div class="col-md-8 mb-3">
+                            {{ form.nome_completo.label(class="form-label required") }}
+                            {{ form.nome_completo(class="form-control required-field", placeholder="Digite o nome completo do paciente") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <!-- CPF -->
+                        <div class="col-md-4 mb-3">
+                            {{ form.cpf.label(class="form-label required") }}
+                            {{ form.cpf(class="form-control cpf-input required-field", placeholder="000.000.000-00") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Profissão -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.profissao.label(class="form-label") }}
+                            {{ form.profissao(class="form-control", placeholder="Ex: Engenheiro, Professor, etc.") }}
+                        </div>
+                        
+                        <!-- Sexo -->
+                        <div class="col-md-3 mb-3">
+                            {{ form.sexo.label(class="form-label") }}
+                            {{ form.sexo(class="form-select") }}
+                        </div>
+                        
+                        <!-- Idade -->
+                        <div class="col-md-3 mb-3">
+                            {{ form.idade.label(class="form-label") }}
+                            {{ form.idade(class="form-control age-input", placeholder="Ex: 35", min="0", max="120") }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Telefone -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.telefone.label(class="form-label") }}
+                            {{ form.telefone(class="form-control phone-input", placeholder="(11) 99999-9999") }}
+                        </div>
+                        
+                        <!-- Email -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.email.label(class="form-label") }}
+                            {{ form.email(class="form-control email-input", placeholder="exemplo@email.com") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Endereço -->
+                    <div class="mb-3">
+                        {{ form.endereco.label(class="form-label") }}
+                        {{ form.endereco(class="form-control", rows="2", placeholder="Rua, número, bairro, cidade - CEP") }}
+                    </div>
+                    
+                    <!-- Foto -->
+                    <div class="mb-3">
+                        {{ form.foto.label(class="form-label") }}
+                        
+                        <!-- Current Photo -->
+                        {% if paciente.foto_path %}
+                        <div class="mb-2">
+                            <label class="form-label small text-muted">Foto atual:</label>
+                            <div class="d-flex align-items-center">
+                                <img src="{{ url_for('static', filename='uploads/' + paciente.foto_path) }}" 
+                                     alt="Foto atual de {{ paciente.nome_completo }}" 
+                                     class="image-preview me-3"
+                                     style="max-width: 100px; max-height: 100px;">
+                                <div>
+                                    <small class="text-muted">
+                                        Selecione uma nova foto para substituir a atual
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="file-upload-wrapper">
+                            {{ form.foto(class="file-upload-input", accept="image/*") }}
+                            <label for="{{ form.foto.id }}" class="file-upload-label">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>
+                                {% if paciente.foto_path %}
+                                    Clique para alterar a foto
+                                {% else %}
+                                    Clique para selecionar uma foto
+                                {% endif %}
+                            </label>
+                        </div>
+                        <div class="mt-2">
+                            <img class="image-preview" style="display: none;" alt="Preview da nova foto">
+                        </div>
+                        <small class="form-text text-muted">
+                            Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB.
+                        </small>
+                    </div>
+                    
+                    <!-- Notas -->
+                    <div class="mb-4">
+                        {{ form.notas.label(class="form-label") }}
+                        {{ form.notas(class="form-control", rows="4", placeholder="Observações gerais, histórico médico, alergias, etc.") }}
+                    </div>
+                    
+                    <!-- Informações de Auditoria -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-info-circle me-2"></i>Informações do Cadastro
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <strong>Cadastrado em:</strong><br>
+                                        {{ paciente.created_at.strftime('%d/%m/%Y às %H:%M') if paciente.created_at }}
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <strong>Última atualização:</strong><br>
+                                        {{ paciente.updated_at.strftime('%d/%m/%Y às %H:%M') if paciente.updated_at }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botões -->
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-outline-danger me-2" 
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash me-2"></i>Excluir Paciente
+                            </button>
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="fas fa-save me-2"></i>Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o paciente <strong>{{ paciente.nome_completo }}</strong>?</p>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção:</strong> Esta ação não pode ser desfeita!
+                    <ul class="mb-0 mt-2">
+                        <li>Todos os dados do paciente serão perdidos</li>
+                        <li>Todos os tratamentos associados serão excluídos</li>
+                        <li>A foto do paciente será removida do sistema</li>
+                    </ul>
+                </div>
+                <p class="mb-0">Digite <strong>EXCLUIR</strong> para confirmar:</p>
+                <input type="text" class="form-control mt-2" id="confirmDelete" placeholder="Digite EXCLUIR">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <form method="POST" action="{{ url_for('excluir_paciente', id=paciente.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                        <i class="fas fa-trash me-2"></i>Excluir Definitivamente
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div class="loading-spinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Form submission with loading
+    $('#editarPacienteForm').on('submit', function() {
+        showLoading();
+    });
+    
+    // Auto-focus on first field
+    $('#nome_completo').focus();
+    
+    // Character counter for notes
+    $('#notas').on('input', function() {
+        const maxLength = 1000;
+        const currentLength = $(this).val().length;
+        const remaining = maxLength - currentLength;
+        
+        let counterElement = $(this).siblings('.char-counter');
+        if (counterElement.length === 0) {
+            counterElement = $('<small class="char-counter text-muted"></small>');
+            $(this).after(counterElement);
+        }
+        
+        counterElement.text(`${remaining} caracteres restantes`);
+        
+        if (remaining < 50) {
+            counterElement.removeClass('text-muted').addClass('text-warning');
+        } else {
+            counterElement.removeClass('text-warning').addClass('text-muted');
+        }
+    });
+    
+    // Delete confirmation
+    $('#confirmDelete').on('input', function() {
+        const value = $(this).val().toUpperCase();
+        const confirmBtn = $('#confirmDeleteBtn');
+        
+        if (value === 'EXCLUIR') {
+            confirmBtn.prop('disabled', false);
+            confirmBtn.removeClass('btn-danger').addClass('btn-outline-danger');
+        } else {
+            confirmBtn.prop('disabled', true);
+            confirmBtn.removeClass('btn-outline-danger').addClass('btn-danger');
+        }
+    });
+    
+    // Reset delete confirmation when modal is hidden
+    $('#deleteModal').on('hidden.bs.modal', function() {
+        $('#confirmDelete').val('');
+        $('#confirmDeleteBtn').prop('disabled', true).removeClass('btn-outline-danger').addClass('btn-danger');
+    });
+    
+    // Warn about unsaved changes
+    let formChanged = false;
+    $('#editarPacienteForm input, #editarPacienteForm textarea, #editarPacienteForm select').on('change', function() {
+        formChanged = true;
+    });
+    
+    $(window).on('beforeunload', function() {
+        if (formChanged) {
+            return 'Você tem alterações não salvas. Tem certeza que deseja sair?';
+        }
+    });
+    
+    $('#editarPacienteForm').on('submit', function() {
+        formChanged = false;
+    });
+});
+</script>
+{% endblock %}

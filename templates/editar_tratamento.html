@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Tratamento - Sistema de Gerenciamento{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-edit me-2 text-warning"></i>
+                Editar Tratamento
+            </h2>
+            <div>
+                <a href="{{ url_for('perfil_paciente', id=tratamento.paciente_id) }}" class="btn btn-info me-2">
+                    <i class="fas fa-user me-2"></i>Ver Paciente
+                </a>
+                <a href="{{ url_for('tratamentos') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h6 class="mb-2">
+                <i class="fas fa-info-circle me-2"></i>Editando tratamento:
+            </h6>
+            <strong>Tratamento #{{ tratamento.id }}</strong> - {{ tratamento.nome_completo }}
+            <br>
+            <small class="text-muted">
+                Data do tratamento: {{ tratamento.data_tratamento.strftime('%d/%m/%Y') }}
+                {% if tratamento.created_at %}
+                | Registrado em: {{ tratamento.created_at.strftime('%d/%m/%Y às %H:%M') }}
+                {% endif %}
+            </small>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard-list me-2"></i>Atualizar Informações do Tratamento
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="editarTratamentoForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Patient Selection -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            {{ form.paciente_id.label(class="form-label required") }}
+                            {{ form.paciente_id(class="form-select required-field") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Complaint -->
+                    <div class="mb-4">
+                        {{ form.queixa_principal.label(class="form-label") }}
+                        {{ form.queixa_principal(class="form-control", rows="3", placeholder="Descreva a queixa principal do paciente...") }}
+                    </div>
+                    
+                    <!-- How and Where -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            {{ form.como.label(class="form-label") }}
+                            {{ form.como(class="form-control", rows="3", placeholder="Como aconteceu? Descreva as circunstâncias...") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.onde.label(class="form-label") }}
+                            {{ form.onde(class="form-control", rows="3", placeholder="Onde dói? Localização da dor...") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Clinical Information -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-stethoscope me-2"></i>Informações Clínicas
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.exames_complementares.label(class="form-label") }}
+                                    {{ form.exames_complementares(class="form-control", rows="3", placeholder="Exames realizados, resultados...") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.antecedentes.label(class="form-label") }}
+                                    {{ form.antecedentes(class="form-control", rows="3", placeholder="Histórico médico, cirurgias anteriores...") }}
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.tratamentos_anteriores.label(class="form-label") }}
+                                    {{ form.tratamentos_anteriores(class="form-control", rows="3", placeholder="Tratamentos já realizados...") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.qualidade_sono.label(class="form-label") }}
+                                    {{ form.qualidade_sono(class="form-control", placeholder="Ex: Boa, Regular, Ruim, Insônia...") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Movement and Radiation -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            {{ form.movimentos.label(class="form-label") }}
+                            {{ form.movimentos(class="form-control", rows="3", placeholder="Movimentos que causam ou aliviam a dor...") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.irradiacoes.label(class="form-label") }}
+                            {{ form.irradiacoes(class="form-control", rows="3", placeholder="Para onde a dor irradia...") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Treatment and Conclusions -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-clipboard-check me-2"></i>Conclusões e Tratamento
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                {{ form.conclusoes_tratamento.label(class="form-label") }}
+                                {{ form.conclusoes_tratamento(class="form-control", rows="4", placeholder="Diagnóstico, técnicas aplicadas, orientações...") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Return Information -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-calendar-check me-2"></i>Informações de Retorno
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    {{ form.data_retorno.label(class="form-label") }}
+                                    {{ form.data_retorno(class="form-control future-date-picker") }}
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    {{ form.retorno.label(class="form-label") }}
+                                    {{ form.retorno(class="form-control", rows="2", placeholder="Observações sobre o retorno, exercícios recomendados...") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Audit Information -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-info-circle me-2"></i>Informações do Registro
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <strong>Data do Tratamento:</strong><br>
+                                        {{ tratamento.data_tratamento.strftime('%d/%m/%Y') }}
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <strong>Registrado em:</strong><br>
+                                        {{ tratamento.created_at.strftime('%d/%m/%Y às %H:%M') if tratamento.created_at }}
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <strong>Última atualização:</strong><br>
+                                        {{ tratamento.updated_at.strftime('%d/%m/%Y às %H:%M') if tratamento.updated_at }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-outline-danger me-2" 
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash me-2"></i>Excluir Tratamento
+                            </button>
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="fas fa-save me-2"></i>Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este tratamento?</p>
+                <div class="alert alert-warning">
+                    <strong>Tratamento #{{ tratamento.id }}</strong><br>
+                    <strong>Paciente:</strong> {{ tratamento.nome_completo }}<br>
+                    <strong>Data:</strong> {{ tratamento.data_tratamento.strftime('%d/%m/%Y') }}
+                </div>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção:</strong> Esta ação não pode ser desfeita!
+                </div>
+                <p class="mb-0">Digite <strong>EXCLUIR</strong> para confirmar:</p>
+                <input type="text" class="form-control mt-2" id="confirmDelete" placeholder="Digite EXCLUIR">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <form method="POST" action="{{ url_for('excluir_tratamento', id=tratamento.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                        <i class="fas fa-trash me-2"></i>Excluir Definitivamente
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div class="loading-spinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Form submission with loading
+    $('#editarTratamentoForm').on('submit', function() {
+        showLoading();
+    });
+    
+    // Auto-focus on first field
+    $('#queixa_principal').focus();
+    
+    // Character counter for text areas
+    $('textarea').each(function() {
+        const maxLength = 1000;
+        $(this).on('input', function() {
+            const currentLength = $(this).val().length;
+            const remaining = maxLength - currentLength;
+            
+            let counterElement = $(this).siblings('.char-counter');
+            if (counterElement.length === 0) {
+                counterElement = $('<small class="char-counter text-muted"></small>');
+                $(this).after(counterElement);
+            }
+            
+            counterElement.text(`${remaining} caracteres restantes`);
+            
+            if (remaining < 50) {
+                counterElement.removeClass('text-muted').addClass('text-warning');
+            } else {
+                counterElement.removeClass('text-warning').addClass('text-muted');
+            }
+        });
+    });
+    
+    // Delete confirmation
+    $('#confirmDelete').on('input', function() {
+        const value = $(this).val().toUpperCase();
+        const confirmBtn = $('#confirmDeleteBtn');
+        
+        if (value === 'EXCLUIR') {
+            confirmBtn.prop('disabled', false);
+            confirmBtn.removeClass('btn-danger').addClass('btn-outline-danger');
+        } else {
+            confirmBtn.prop('disabled', true);
+            confirmBtn.removeClass('btn-outline-danger').addClass('btn-danger');
+        }
+    });
+    
+    // Reset delete confirmation when modal is hidden
+    $('#deleteModal').on('hidden.bs.modal', function() {
+        $('#confirmDelete').val('');
+        $('#confirmDeleteBtn').prop('disabled', true).removeClass('btn-outline-danger').addClass('btn-danger');
+    });
+    
+    // Warn about unsaved changes
+    let formChanged = false;
+    $('#editarTratamentoForm input, #editarTratamentoForm textarea, #editarTratamentoForm select').on('change', function() {
+        formChanged = true;
+    });
+    
+    $(window).on('beforeunload', function() {
+        if (formChanged) {
+            return 'Você tem alterações não salvas. Tem certeza que deseja sair?';
+        }
+    });
+    
+    $('#editarTratamentoForm').on('submit', function() {
+        formChanged = false;
+    });
+});
+</script>
+{% endblock %}

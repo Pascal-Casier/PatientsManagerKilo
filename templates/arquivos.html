@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Arquivos - Sistema de Gerenciamento{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-folder me-2 text-warning"></i>
+                Gerenciar Arquivos
+            </h2>
+            <div>
+                <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-upload me-2"></i>Enviar Arquivo
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ arquivos|length }}</h4>
+                        <p class="mb-0">Total de Arquivos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-file fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ arquivos|selectattr('tipo', 'equalto', 'foto')|list|length }}</h4>
+                        <p class="mb-0">Fotos de Pacientes</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-image fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ arquivos|selectattr('tipo', 'equalto', 'documento')|list|length }}</h4>
+                        <p class="mb-0">Documentos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-file-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ pacientes|length }}</h4>
+                        <p class="mb-0">Pacientes</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Files List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Lista de Arquivos
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if arquivos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Arquivo</th>
+                                    <th>Tipo</th>
+                                    <th>Paciente Associado</th>
+                                    <th>Tamanho</th>
+                                    <th>Data de Modificação</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for arquivo in arquivos %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if arquivo.nome.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                                <i class="fas fa-image text-info me-2"></i>
+                                            {% elif arquivo.nome.lower().endswith('.pdf') %}
+                                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                                            {% elif arquivo.nome.lower().endswith(('.doc', '.docx')) %}
+                                                <i class="fas fa-file-word text-primary me-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-file text-secondary me-2"></i>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ arquivo.nome }}</strong>
+                                                {% if arquivo.nome|length > 50 %}
+                                                <br><small class="text-muted">{{ arquivo.nome[:50] }}...</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if arquivo.tipo == 'foto' %}
+                                            <span class="badge bg-info">Foto do Paciente</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Documento</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if arquivo.paciente %}
+                                            <a href="{{ url_for('perfil_paciente', id=arquivo.paciente.id) }}" 
+                                               class="text-decoration-none">
+                                                {{ arquivo.paciente.nome_completo }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">Não associado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if arquivo.tamanho < 1024 %}
+                                            {{ arquivo.tamanho }} B
+                                        {% elif arquivo.tamanho < 1024*1024 %}
+                                            {{ "%.1f"|format(arquivo.tamanho/1024) }} KB
+                                        {% else %}
+                                            {{ "%.1f"|format(arquivo.tamanho/(1024*1024)) }} MB
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ arquivo.data_modificacao.strftime('%d/%m/%Y %H:%M') }}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('download_arquivo', filename=arquivo.nome) }}" 
+                                               class="btn btn-outline-primary btn-sm" 
+                                               title="Baixar arquivo">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            {% if arquivo.nome.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                            <button type="button" class="btn btn-outline-info btn-sm" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#imageModal{{ loop.index }}"
+                                                    title="Visualizar imagem">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            {% endif %}
+                                            {% if arquivo.tipo != 'foto' %}
+                                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteModal{{ loop.index }}"
+                                                    title="Excluir arquivo">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Image Preview Modal -->
+                                {% if arquivo.nome.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                <div class="modal fade" id="imageModal{{ loop.index }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">{{ arquivo.nome }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body text-center">
+                                                <img src="{{ url_for('static', filename='uploads/' + arquivo.nome) }}" 
+                                                     alt="{{ arquivo.nome }}" 
+                                                     class="img-fluid">
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    Fechar
+                                                </button>
+                                                <a href="{{ url_for('download_arquivo', filename=arquivo.nome) }}" 
+                                                   class="btn btn-primary">
+                                                    <i class="fas fa-download me-2"></i>Baixar
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Delete Confirmation Modal -->
+                                {% if arquivo.tipo != 'foto' %}
+                                <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title text-danger">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Exclusão
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Tem certeza que deseja excluir o arquivo:</p>
+                                                <p><strong>{{ arquivo.nome }}</strong></p>
+                                                <div class="alert alert-warning">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                    Esta ação não pode ser desfeita!
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    Cancelar
+                                                </button>
+                                                <form method="POST" action="{{ url_for('excluir_arquivo', filename=arquivo.nome) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="fas fa-trash me-2"></i>Excluir
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum arquivo encontrado</h5>
+                        <p class="text-muted">
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                                Envie o primeiro arquivo
+                            </button>
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-upload me-2"></i>Enviar Arquivo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('upload_arquivo') }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="arquivo" class="form-label required">Arquivo</label>
+                        <input type="file" class="form-control" id="arquivo" name="arquivo" 
+                               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif" required>
+                        <div class="form-text">
+                            Formatos aceitos: PDF, DOC, DOCX, TXT, JPG, PNG, GIF. Tamanho máximo: 16MB.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="paciente_id" class="form-label">Paciente Associado (Opcional)</label>
+                        <select class="form-select" id="paciente_id" name="paciente_id">
+                            <option value="">Selecione um paciente...</option>
+                            {% for paciente in pacientes %}
+                            <option value="{{ paciente.id }}">{{ paciente.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descricao" class="form-label">Descrição (Opcional)</label>
+                        <input type="text" class="form-control" id="descricao" name="descricao" 
+                               placeholder="Ex: Exame, Receita, Relatório...">
+                        <div class="form-text">
+                            Esta descrição será incluída no nome do arquivo.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload me-2"></i>Enviar Arquivo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // File input change handler
+    $('#arquivo').on('change', function() {
+        const file = this.files[0];
+        if (file) {
+            // Check file size (16MB limit)
+            if (file.size > 16 * 1024 * 1024) {
+                alert('Arquivo muito grande. Tamanho máximo: 16MB.');
+                $(this).val('');
+                return;
+            }
+            
+            // Auto-fill description based on file name
+            const fileName = file.name;
+            const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+            $('#descricao').attr('placeholder', `Ex: ${nameWithoutExt}`);
+        }
+    });
+    
+    // Initialize tooltips
+    $('[title]').tooltip();
+});
+</script>
+{% endblock %}

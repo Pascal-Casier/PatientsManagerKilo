@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Tratamento - Sistema de Gerenciamento{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-notes-medical me-2 text-success"></i>
+                Registrar Novo Tratamento
+            </h2>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Voltar
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if paciente_selecionado %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h6 class="mb-2">
+                <i class="fas fa-user me-2"></i>Paciente Selecionado:
+            </h6>
+            <strong>{{ paciente_selecionado.nome_completo }}</strong> - CPF: {{ paciente_selecionado.cpf | format_cpf }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard-list me-2"></i>Informações do Tratamento
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('salvar_tratamento') }}" id="novoTratamentoForm" data-auto-save>
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Patient Selection -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            {{ form.paciente_id.label(class="form-label required") }}
+                            {{ form.paciente_id(class="form-select required-field") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Complaint -->
+                    <div class="mb-4">
+                        {{ form.queixa_principal.label(class="form-label") }}
+                        {{ form.queixa_principal(class="form-control", rows="3", placeholder="Descreva a queixa principal do paciente...") }}
+                    </div>
+                    
+                    <!-- How and Where -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            {{ form.como.label(class="form-label") }}
+                            {{ form.como(class="form-control", rows="3", placeholder="Como aconteceu? Descreva as circunstâncias...") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.onde.label(class="form-label") }}
+                            {{ form.onde(class="form-control", rows="3", placeholder="Onde dói? Localização da dor...") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Clinical Information -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-stethoscope me-2"></i>Informações Clínicas
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.exames_complementares.label(class="form-label") }}
+                                    {{ form.exames_complementares(class="form-control", rows="3", placeholder="Exames realizados, resultados...") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.antecedentes.label(class="form-label") }}
+                                    {{ form.antecedentes(class="form-control", rows="3", placeholder="Histórico médico, cirurgias anteriores...") }}
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.tratamentos_anteriores.label(class="form-label") }}
+                                    {{ form.tratamentos_anteriores(class="form-control", rows="3", placeholder="Tratamentos já realizados...") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.qualidade_sono.label(class="form-label") }}
+                                    {{ form.qualidade_sono(class="form-control", placeholder="Ex: Boa, Regular, Ruim, Insônia...") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Movement and Radiation -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            {{ form.movimentos.label(class="form-label") }}
+                            {{ form.movimentos(class="form-control", rows="3", placeholder="Movimentos que causam ou aliviam a dor...") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.irradiacoes.label(class="form-label") }}
+                            {{ form.irradiacoes(class="form-control", rows="3", placeholder="Para onde a dor irradia...") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Treatment and Conclusions -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-clipboard-check me-2"></i>Conclusões e Tratamento
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                {{ form.conclusoes_tratamento.label(class="form-label") }}
+                                {{ form.conclusoes_tratamento(class="form-control", rows="4", placeholder="Diagnóstico, técnicas aplicadas, orientações...") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Return Information -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0">
+                                <i class="fas fa-calendar-check me-2"></i>Informações de Retorno
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    {{ form.data_retorno.label(class="form-label") }}
+                                    {{ form.data_retorno(class="form-control future-date-picker") }}
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    {{ form.retorno.label(class="form-label") }}
+                                    {{ form.retorno(class="form-control", rows="2", placeholder="Observações sobre o retorno, exercícios recomendados...") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-outline-primary me-2" onclick="saveDraft()">
+                                <i class="fas fa-save me-2"></i>Salvar Rascunho
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check me-2"></i>Registrar Tratamento
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div class="loading-spinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Form submission with loading
+    $('#novoTratamentoForm').on('submit', function() {
+        showLoading();
+    });
+    
+    // Auto-focus on first field
+    $('#paciente_id').focus();
+    
+    // Character counter for text areas
+    $('textarea').each(function() {
+        const maxLength = 1000;
+        $(this).on('input', function() {
+            const currentLength = $(this).val().length;
+            const remaining = maxLength - currentLength;
+            
+            let counterElement = $(this).siblings('.char-counter');
+            if (counterElement.length === 0) {
+                counterElement = $('<small class="char-counter text-muted"></small>');
+                $(this).after(counterElement);
+            }
+            
+            counterElement.text(`${remaining} caracteres restantes`);
+            
+            if (remaining < 50) {
+                counterElement.removeClass('text-muted').addClass('text-warning');
+            } else {
+                counterElement.removeClass('text-warning').addClass('text-muted');
+            }
+        });
+    });
+    
+    // Patient selection change handler
+    $('#paciente_id').on('change', function() {
+        const selectedPatientId = $(this).val();
+        if (selectedPatientId) {
+            // You could add AJAX call here to load patient info
+            console.log('Patient selected:', selectedPatientId);
+        }
+    });
+});
+
+// Save draft function
+function saveDraft() {
+    const formId = 'novoTratamentoForm';
+    autoSaveForm(formId);
+    showAlert('Rascunho salvo com sucesso!', 'success');
+}
+
+// Auto-save every 30 seconds
+setInterval(function() {
+    if ($('#novoTratamentoForm input, #novoTratamentoForm textarea, #novoTratamentoForm select').filter(function() {
+        return $(this).val() !== '';
+    }).length > 1) {
+        autoSaveForm('novoTratamentoForm');
+    }
+}, 30000);
+</script>
+{% endblock %}

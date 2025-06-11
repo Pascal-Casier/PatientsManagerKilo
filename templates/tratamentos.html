@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Tratamentos - Sistema de Gerenciamento{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-notes-medical me-2 text-info"></i>
+                Gerenciar Tratamentos
+            </h2>
+            <div>
+                <a href="{{ url_for('novo_tratamento') }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus me-2"></i>Novo Tratamento
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ tratamentos.total }}</h4>
+                        <p class="mb-0">Total de Tratamentos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-notes-medical fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ tratamentos.items|selectattr('data_tratamento')|selectattr('data_tratamento', 'equalto', today)|list|length }}</h4>
+                        <p class="mb-0">Hoje</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar-day fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ tratamentos.items|selectattr('data_retorno')|selectattr('data_retorno', 'ge', today)|list|length }}</h4>
+                        <p class="mb-0">Retornos Agendados</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar-check fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ tratamentos.pages }}</h4>
+                        <p class="mb-0">Páginas</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-file-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Treatments List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Lista de Tratamentos
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if tratamentos.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Paciente</th>
+                                    <th>Queixa Principal</th>
+                                    <th>Data Retorno</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tratamento in tratamentos.items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ tratamento.data_tratamento.strftime('%d/%m/%Y') }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ tratamento.created_at.strftime('%H:%M') if tratamento.created_at }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ tratamento.nome_completo }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <a href="{{ url_for('perfil_paciente', id=tratamento.paciente_id) }}" 
+                                               class="text-decoration-none">
+                                                Ver perfil
+                                            </a>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if tratamento.queixa_principal %}
+                                            {{ tratamento.queixa_principal[:100] }}
+                                            {% if tratamento.queixa_principal|length > 100 %}...{% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Não informado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if tratamento.data_retorno %}
+                                            <span class="badge bg-warning text-dark">
+                                                {{ tratamento.data_retorno.strftime('%d/%m/%Y') }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Não agendado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#treatmentModal{{ tratamento.id }}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <a href="{{ url_for('perfil_paciente', id=tratamento.paciente_id) }}" 
+                                               class="btn btn-outline-info btn-sm">
+                                                <i class="fas fa-user"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Treatment Details Modal -->
+                                <div class="modal fade" id="treatmentModal{{ tratamento.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">
+                                                    Tratamento - {{ tratamento.nome_completo }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <strong>Data do Tratamento:</strong><br>
+                                                        {{ tratamento.data_tratamento.strftime('%d/%m/%Y') }}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <strong>Paciente:</strong><br>
+                                                        {{ tratamento.nome_completo }}
+                                                    </div>
+                                                </div>
+                                                
+                                                {% if tratamento.queixa_principal %}
+                                                <div class="mb-3">
+                                                    <strong class="text-danger">Queixa Principal:</strong>
+                                                    <p>{{ tratamento.queixa_principal }}</p>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <div class="row mb-3">
+                                                    {% if tratamento.como %}
+                                                    <div class="col-md-6">
+                                                        <strong>Como:</strong>
+                                                        <p class="small">{{ tratamento.como }}</p>
+                                                    </div>
+                                                    {% endif %}
+                                                    
+                                                    {% if tratamento.onde %}
+                                                    <div class="col-md-6">
+                                                        <strong>Onde:</strong>
+                                                        <p class="small">{{ tratamento.onde }}</p>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                {% if tratamento.conclusoes_tratamento %}
+                                                <div class="mb-3">
+                                                    <strong class="text-success">Conclusões e Tratamento:</strong>
+                                                    <p>{{ tratamento.conclusoes_tratamento }}</p>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if tratamento.data_retorno %}
+                                                <div class="mb-3">
+                                                    <strong class="text-warning">Data de Retorno:</strong>
+                                                    {{ tratamento.data_retorno.strftime('%d/%m/%Y') }}
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if tratamento.retorno %}
+                                                <div class="mb-3">
+                                                    <strong class="text-info">Observações de Retorno:</strong>
+                                                    <p>{{ tratamento.retorno }}</p>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    Fechar
+                                                </button>
+                                                <a href="{{ url_for('perfil_paciente', id=tratamento.paciente_id) }}" 
+                                                   class="btn btn-primary">
+                                                    Ver Perfil do Paciente
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if tratamentos.pages > 1 %}
+                    <nav aria-label="Navegação de páginas">
+                        <ul class="pagination justify-content-center">
+                            {% if tratamentos.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('tratamentos', page=tratamentos.prev_num) }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in tratamentos.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != tratamentos.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('tratamentos', page=page_num) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if tratamentos.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('tratamentos', page=tratamentos.next_num) }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-notes-medical fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum tratamento registrado</h5>
+                        <p class="text-muted">
+                            <a href="{{ url_for('novo_tratamento') }}">
+                                Clique aqui para registrar o primeiro tratamento
+                            </a>
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Initialize tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    
+    // Add search functionality (placeholder)
+    $('#searchTreatments').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('tbody tr').each(function() {
+            const text = $(this).text().toLowerCase();
+            $(this).toggle(text.includes(searchTerm));
+        });
+    });
+});
+</script>
+{% endblock %}

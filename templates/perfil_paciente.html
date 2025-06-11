@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}{{ paciente.nome_completo }} - Perfil do Paciente{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-user me-2 text-primary"></i>
+                Perfil do Paciente
+            </h2>
+            <div>
+                <a href="{{ url_for('novo_tratamento', paciente_id=paciente.id) }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus me-2"></i>Novo Tratamento
+                </a>
+                <a href="{{ url_for('editar_paciente', id=paciente.id) }}" class="btn btn-warning me-2">
+                    <i class="fas fa-edit me-2"></i>Editar
+                </a>
+                <a href="{{ url_for('pesquisar_pacientes') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Patient Information -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user me-2"></i>Informações Pessoais
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <!-- Photo -->
+                <div class="mb-3">
+                    {% if paciente.foto_path %}
+                        <img src="{{ url_for('static', filename='uploads/' + paciente.foto_path) }}" 
+                             alt="Foto de {{ paciente.nome_completo }}" 
+                             class="patient-avatar-large">
+                    {% else %}
+                        <div class="patient-avatar-large bg-secondary d-flex align-items-center justify-content-center mx-auto">
+                            <i class="fas fa-user fa-4x text-white"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Name and Basic Info -->
+                <h4 class="mb-3">{{ paciente.nome_completo }}</h4>
+                
+                <div class="row text-start">
+                    <div class="col-12 mb-2">
+                        <strong><i class="fas fa-id-card me-2 text-muted"></i>CPF:</strong><br>
+                        <span class="ms-4">{{ paciente.cpf | format_cpf }}</span>
+                    </div>
+                    
+                    {% if paciente.idade %}
+                    <div class="col-12 mb-2">
+                        <strong><i class="fas fa-birthday-cake me-2 text-muted"></i>Idade:</strong><br>
+                        <span class="ms-4">{{ paciente.idade }} anos</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paciente.sexo %}
+                    <div class="col-12 mb-2">
+                        <strong><i class="fas fa-venus-mars me-2 text-muted"></i>Sexo:</strong><br>
+                        <span class="ms-4">{{ paciente.sexo }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paciente.profissao %}
+                    <div class="col-12 mb-2">
+                        <strong><i class="fas fa-briefcase me-2 text-muted"></i>Profissão:</strong><br>
+                        <span class="ms-4">{{ paciente.profissao }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-12 mb-2">
+                        <strong><i class="fas fa-calendar me-2 text-muted"></i>Cadastrado em:</strong><br>
+                        <span class="ms-4">{{ paciente.data_registro.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Contact Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">
+                    <i class="fas fa-address-book me-2"></i>Contato
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if paciente.telefone %}
+                <div class="mb-2">
+                    <strong><i class="fas fa-phone me-2 text-muted"></i>Telefone:</strong><br>
+                    <span class="ms-4">{{ paciente.telefone | format_phone }}</span>
+                </div>
+                {% endif %}
+                
+                {% if paciente.email %}
+                <div class="mb-2">
+                    <strong><i class="fas fa-envelope me-2 text-muted"></i>Email:</strong><br>
+                    <span class="ms-4">{{ paciente.email }}</span>
+                </div>
+                {% endif %}
+                
+                {% if paciente.endereco %}
+                <div class="mb-0">
+                    <strong><i class="fas fa-map-marker-alt me-2 text-muted"></i>Endereço:</strong><br>
+                    <span class="ms-4">{{ paciente.endereco }}</span>
+                </div>
+                {% endif %}
+                
+                {% if not (paciente.telefone or paciente.email or paciente.endereco) %}
+                <p class="text-muted mb-0">Nenhuma informação de contato cadastrada.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Notes -->
+        {% if paciente.notas %}
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">
+                    <i class="fas fa-sticky-note me-2"></i>Observações
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ paciente.notas }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Treatment History -->
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-notes-medical me-2"></i>
+                    Histórico de Tratamentos ({{ tratamentos|length }})
+                </h5>
+                <a href="{{ url_for('novo_tratamento', paciente_id=paciente.id) }}" class="btn btn-light btn-sm">
+                    <i class="fas fa-plus me-1"></i>Novo
+                </a>
+            </div>
+            <div class="card-body">
+                {% if tratamentos %}
+                    <div class="timeline">
+                        {% for tratamento in tratamentos %}
+                        <div class="treatment-item p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-calendar-day me-2 text-info"></i>
+                                    {{ tratamento.data_tratamento.strftime('%d/%m/%Y') }}
+                                </h6>
+                                <small class="text-muted">
+                                    Tratamento #{{ tratamento.id }}
+                                </small>
+                            </div>
+                            
+                            {% if tratamento.queixa_principal %}
+                            <div class="mb-2">
+                                <strong class="text-danger">Queixa Principal:</strong>
+                                <p class="mb-1 ms-3">{{ tratamento.queixa_principal }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row">
+                                {% if tratamento.como %}
+                                <div class="col-md-6 mb-2">
+                                    <strong class="text-primary">Como:</strong>
+                                    <p class="mb-1 ms-3 small">{{ tratamento.como }}</p>
+                                </div>
+                                {% endif %}
+                                
+                                {% if tratamento.onde %}
+                                <div class="col-md-6 mb-2">
+                                    <strong class="text-primary">Onde:</strong>
+                                    <p class="mb-1 ms-3 small">{{ tratamento.onde }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if tratamento.conclusoes_tratamento %}
+                            <div class="mb-2">
+                                <strong class="text-success">Conclusões e Tratamento:</strong>
+                                <p class="mb-1 ms-3">{{ tratamento.conclusoes_tratamento }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if tratamento.data_retorno %}
+                            <div class="mb-2">
+                                <strong class="text-warning">Data de Retorno:</strong>
+                                <span class="ms-2">{{ tratamento.data_retorno.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                            {% endif %}
+                            
+                            {% if tratamento.retorno %}
+                            <div class="mb-2">
+                                <strong class="text-info">Retorno:</strong>
+                                <p class="mb-1 ms-3">{{ tratamento.retorno }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Collapsible Details -->
+                            <div class="mt-3">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#details{{ tratamento.id }}" 
+                                        aria-expanded="false">
+                                    <i class="fas fa-eye me-1"></i>Ver Detalhes
+                                </button>
+                                
+                                <div class="collapse mt-2" id="details{{ tratamento.id }}">
+                                    <div class="card card-body bg-light">
+                                        <div class="row">
+                                            {% if tratamento.exames_complementares %}
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Exames Complementares:</strong>
+                                                <p class="small mb-1">{{ tratamento.exames_complementares }}</p>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if tratamento.antecedentes %}
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Antecedentes:</strong>
+                                                <p class="small mb-1">{{ tratamento.antecedentes }}</p>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if tratamento.tratamentos_anteriores %}
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Tratamentos Anteriores:</strong>
+                                                <p class="small mb-1">{{ tratamento.tratamentos_anteriores }}</p>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if tratamento.qualidade_sono %}
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Qualidade do Sono:</strong>
+                                                <p class="small mb-1">{{ tratamento.qualidade_sono }}</p>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if tratamento.movimentos %}
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Movimentos:</strong>
+                                                <p class="small mb-1">{{ tratamento.movimentos }}</p>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if tratamento.irradiacoes %}
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Irradiações:</strong>
+                                                <p class="small mb-1">{{ tratamento.irradiacoes }}</p>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-notes-medical fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum tratamento registrado</h5>
+                        <p class="text-muted">
+                            <a href="{{ url_for('novo_tratamento', paciente_id=paciente.id) }}">
+                                Clique aqui para registrar o primeiro tratamento
+                            </a>
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o paciente <strong>{{ paciente.nome_completo }}</strong>?</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Esta ação não pode ser desfeita e todos os tratamentos associados também serão excluídos.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('excluir_paciente', id=paciente.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button -->
+<div class="position-fixed bottom-0 end-0 p-3">
+    <div class="btn-group-vertical" role="group">
+        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="fas fa-trash"></i>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+            <i class="fas fa-print"></i>
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Auto-expand latest treatment details if there are treatments
+    var firstDetails = $('.collapse').first();
+    if (firstDetails.length > 0) {
+        firstDetails.collapse('show');
+    }
+});
+</script>
+{% endblock %}

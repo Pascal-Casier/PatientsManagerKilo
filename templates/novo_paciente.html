@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Paciente - Sistema de Gerenciamento{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-user-plus me-2 text-success"></i>
+                Cadastrar Novo Paciente
+            </h2>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Voltar
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user me-2"></i>Informações do Paciente
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="novoPacienteForm" data-auto-save>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <!-- Nome Completo -->
+                        <div class="col-md-8 mb-3">
+                            {{ form.nome_completo.label(class="form-label required") }}
+                            {{ form.nome_completo(class="form-control required-field", placeholder="Digite o nome completo do paciente") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <!-- CPF -->
+                        <div class="col-md-4 mb-3">
+                            {{ form.cpf.label(class="form-label required") }}
+                            {{ form.cpf(class="form-control cpf-input required-field", placeholder="000.000.000-00") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Profissão -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.profissao.label(class="form-label") }}
+                            {{ form.profissao(class="form-control", placeholder="Ex: Engenheiro, Professor, etc.") }}
+                        </div>
+                        
+                        <!-- Sexo -->
+                        <div class="col-md-3 mb-3">
+                            {{ form.sexo.label(class="form-label") }}
+                            {{ form.sexo(class="form-select") }}
+                        </div>
+                        
+                        <!-- Idade -->
+                        <div class="col-md-3 mb-3">
+                            {{ form.idade.label(class="form-label") }}
+                            {{ form.idade(class="form-control age-input", placeholder="Ex: 35", min="0", max="120") }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Telefone -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.telefone.label(class="form-label") }}
+                            {{ form.telefone(class="form-control phone-input", placeholder="(11) 99999-9999") }}
+                        </div>
+                        
+                        <!-- Email -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.email.label(class="form-label") }}
+                            {{ form.email(class="form-control email-input", placeholder="exemplo@email.com") }}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Endereço -->
+                    <div class="mb-3">
+                        {{ form.endereco.label(class="form-label") }}
+                        {{ form.endereco(class="form-control", rows="2", placeholder="Rua, número, bairro, cidade - CEP") }}
+                    </div>
+                    
+                    <!-- Foto -->
+                    <div class="mb-3">
+                        {{ form.foto.label(class="form-label") }}
+                        <div class="file-upload-wrapper">
+                            {{ form.foto(class="file-upload-input", accept="image/*") }}
+                            <label for="{{ form.foto.id }}" class="file-upload-label">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>
+                                Clique para selecionar uma foto
+                            </label>
+                        </div>
+                        <div class="mt-2">
+                            <img class="image-preview" style="display: none;" alt="Preview da foto">
+                        </div>
+                        <small class="form-text text-muted">
+                            Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB.
+                        </small>
+                    </div>
+                    
+                    <!-- Notas -->
+                    <div class="mb-4">
+                        {{ form.notas.label(class="form-label") }}
+                        {{ form.notas(class="form-control", rows="4", placeholder="Observações gerais, histórico médico, alergias, etc.") }}
+                    </div>
+                    
+                    <!-- Botões -->
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-save me-2"></i>Cadastrar Paciente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div class="loading-spinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Form submission with loading
+    $('#novoPacienteForm').on('submit', function() {
+        showLoading();
+    });
+    
+    // Auto-focus on first field
+    $('#nome_completo').focus();
+    
+    // Character counter for notes
+    $('#notas').on('input', function() {
+        const maxLength = 1000;
+        const currentLength = $(this).val().length;
+        const remaining = maxLength - currentLength;
+        
+        let counterElement = $(this).siblings('.char-counter');
+        if (counterElement.length === 0) {
+            counterElement = $('<small class="char-counter text-muted"></small>');
+            $(this).after(counterElement);
+        }
+        
+        counterElement.text(`${remaining} caracteres restantes`);
+        
+        if (remaining < 50) {
+            counterElement.removeClass('text-muted').addClass('text-warning');
+        } else {
+            counterElement.removeClass('text-warning').addClass('text-muted');
+        }
+    });
+});
+</script>
+{% endblock %}
