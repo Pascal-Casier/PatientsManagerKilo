@@ -140,6 +140,37 @@ def pesquisar_pacientes():
     
     return render_template('pesquisar_pacientes.html', pacientes=pacientes)
 
+@app.route('/api/pesquisar-pacientes')
+def api_pesquisar_pacientes():
+    nome = request.args.get('nome', '').strip()
+    cpf = request.args.get('cpf', '').strip()
+
+    pacientes = []
+
+    if nome or cpf:
+        query = Paciente.query
+
+        if nome:
+            query = query.filter(Paciente.nome_completo.ilike(f'%{nome}%'))
+
+        if cpf:
+            cpf_clean = clean_numeric_input(cpf)
+            query = query.filter(Paciente.cpf.like(f'%{cpf_clean}%'))
+
+        pacientes = query.order_by(Paciente.nome_completo).all()
+
+    # Convert pacientes to a list of dictionaries
+    pacientes_list = [{
+        'id': p.id,
+        'nome_completo': p.nome_completo,
+        'cpf': format_cpf(p.cpf),
+        'telefone': format_phone(p.telefone),
+        'email': p.email,
+        'foto_path': p.foto_path,
+    } for p in pacientes]
+
+    return jsonify(pacientes_list)
+
 @app.route('/paciente/<int:id>')
 def perfil_paciente(id):
     paciente = Paciente.query.get_or_404(id)

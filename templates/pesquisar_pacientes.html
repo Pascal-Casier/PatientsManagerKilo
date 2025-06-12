@@ -249,13 +249,40 @@ $(document).ready(function() {
             // Simulate AJAX search (replace with actual AJAX call)
             $('#quickResults').html('<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Pesquisando...</div>');
             
-            // This would be replaced with an actual AJAX call to search endpoint
-            setTimeout(function() {
-                $('#quickResults').html('<p class="text-muted">Funcionalidade de pesquisa em tempo real será implementada.</p>');
-            }, 1000);
+            // Make AJAX call to search endpoint
+            $.ajax({
+                url: '/api/pesquisar-pacientes',
+                type: 'GET',
+                data: { nome: searchTerm },
+                dataType: 'json',
+                success: function(data) {
+                    // Clear previous results
+                    $('#quickResults').empty();
+                    
+                    if (data.length === 0) {
+                        $('#quickResults').html('<p class="text-muted">Nenhum paciente encontrado.</p>');
+                    } else {
+                        // Display search results
+                        $.each(data, function(index, paciente) {
+                            const resultHtml = `
+                                <div class="search-result-item">
+                                    <a href="/paciente/${paciente.id}">
+                                        ${paciente.nome_completo} - ${paciente.cpf}
+                                    </a>
+                                </div>
+                            `;
+                            $('#quickResults').append(resultHtml);
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $('#quickResults').html('<p class="text-danger">Erro ao pesquisar.</p>');
+                    console.error(error);
+                }
+            });
         }, 500);
     });
-    
+
     // Auto-focus on search input
     $('#nome').focus();
 });
