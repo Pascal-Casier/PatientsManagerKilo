@@ -71,7 +71,7 @@ function initializeFormValidation() {
         
         // Check required fields
         $(this).find('.required-field').each(function() {
-            if (!$(this).val().trim()) {
+            if (!$(this).val().trim() && !$(this).hasClass('cpf-input')) {
                 $(this).addClass('is-invalid');
                 $(this).siblings('.invalid-feedback').text('Este campo é obrigatório');
                 isValid = false;
@@ -85,6 +85,8 @@ function initializeFormValidation() {
                 $(this).addClass('is-invalid');
                 $(this).siblings('.invalid-feedback').text('CPF inválido');
                 isValid = false;
+            } else {
+                $(this).removeClass('is-invalid');
             }
         });
         

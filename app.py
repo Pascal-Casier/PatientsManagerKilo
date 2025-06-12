@@ -26,7 +26,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Forms
 class PacienteForm(FlaskForm):
     nome_completo = StringField('Nome Completo', validators=[DataRequired(), Length(min=2, max=200)])
-    cpf = StringField('CPF', validators=[DataRequired(), Length(min=11, max=14)])
+    cpf = StringField('CPF', validators=[Optional(), Length(min=11, max=14)])
     profissao = StringField('Profissão', validators=[Optional(), Length(max=100)])
     sexo = SelectField('Sexo', choices=[('', 'Selecione...'), ('Masculino', 'Masculino'), ('Feminino', 'Feminino'), ('Outro', 'Outro')], validators=[Optional()])
     idade = IntegerField('Idade', validators=[Optional()])
@@ -73,17 +73,15 @@ def novo_paciente():
     form = PacienteForm()
     
     if form.validate_on_submit():
-        # Clean and validate CPF
+        # Clean CPF
         cpf_clean = clean_numeric_input(form.cpf.data)
-        if not validate_cpf(cpf_clean):
-            flash('CPF inválido. Por favor, verifique o número digitado.', 'error')
-            return render_template('novo_paciente.html', form=form)
-        
+
         # Check if CPF already exists
-        existing_patient = Paciente.query.filter_by(cpf=cpf_clean).first()
-        if existing_patient:
-            flash('Já existe um paciente cadastrado com este CPF.', 'error')
-            return render_template('novo_paciente.html', form=form)
+        #if cpf_clean:
+        #    existing_patient = Paciente.query.filter_by(cpf=cpf_clean).first()
+        #    if existing_patient:
+        #        flash('Já existe um paciente cadastrado com este CPF.', 'error')
+        #        return render_template('novo_paciente.html', form=form)
         
         # Handle file upload
         foto_filename = None
@@ -420,17 +418,15 @@ def editar_paciente(id):
     form = PacienteForm(obj=paciente)
     
     if form.validate_on_submit():
-        # Clean and validate CPF
+        # Clean CPF
         cpf_clean = clean_numeric_input(form.cpf.data)
-        if not validate_cpf(cpf_clean):
-            flash('CPF inválido. Por favor, verifique o número digitado.', 'error')
-            return render_template('editar_paciente.html', form=form, paciente=paciente)
         
         # Check if CPF already exists (excluding current patient)
-        existing_patient = Paciente.query.filter(Paciente.cpf == cpf_clean, Paciente.id != id).first()
-        if existing_patient:
-            flash('Já existe outro paciente cadastrado com este CPF.', 'error')
-            return render_template('editar_paciente.html', form=form, paciente=paciente)
+        #if cpf_clean:
+        #    existing_patient = Paciente.query.filter(Paciente.cpf == cpf_clean, Paciente.id != id).first()
+        #    if existing_patient:
+        #        flash('Já existe outro paciente cadastrado com este CPF.', 'error')
+        #        return render_template('editar_paciente.html', form=form, paciente=paciente)
         
         # Handle file upload
         if form.foto.data:

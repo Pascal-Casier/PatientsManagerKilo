@@ -13,7 +13,7 @@ class Paciente(db.Model):
     sexo = db.Column(db.String(20))
     idade = db.Column(db.Integer)
     endereco = db.Column(db.Text)
-    cpf = db.Column(db.String(14), unique=True, nullable=False)
+    cpf = db.Column(db.String(14), unique=True, nullable=True)
     telefone = db.Column(db.String(20))
     email = db.Column(db.String(120))
     foto_path = db.Column(db.String(200))
