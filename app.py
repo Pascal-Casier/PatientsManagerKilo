@@ -319,40 +319,40 @@ def salvar_tratamento():
     pacientes = Paciente.query.order_by(Paciente.nome_completo).all()
     form.paciente_id.choices = [(p.id, p.nome_completo) for p in pacientes]
     
-    if form.validate_on_submit():
-        paciente = Paciente.query.get_or_404(form.paciente_id.data)
-        
-        tratamento = Tratamento(
-            paciente_id=paciente.id,
-            nome_completo=paciente.nome_completo,
-            queixa_principal=form.queixa_principal.data.strip() if form.queixa_principal.data else None,
-            como=form.como.data.strip() if form.como.data else None,
-            onde=form.onde.data.strip() if form.onde.data else None,
-            exames_complementares=form.exames_complementares.data.strip() if form.exames_complementares.data else None,
-            antecedentes=form.antecedentes.data.strip() if form.antecedentes.data else None,
-            tratamentos_anteriores=form.tratamentos_anteriores.data.strip() if form.tratamentos_anteriores.data else None,
-            qualidade_sono=form.qualidade_sono.data.strip() if form.qualidade_sono.data else None,
-            movimentos=form.movimentos.data.strip() if form.movimentos.data else None,
-            irradiacoes=form.irradiacoes.data.strip() if form.irradiacoes.data else None,
-            conclusoes_tratamento=form.conclusoes_tratamento.data.strip() if form.conclusoes_tratamento.data else None,
-            data_retorno=form.data_retorno.data,
-            retorno=form.retorno.data.strip() if form.retorno.data else None
-        )
-        
-        try:
-            db.session.add(tratamento)
-            db.session.commit()
-            flash(f'Tratamento para {paciente.nome_completo} registrado com sucesso!', 'success')
-            return redirect(url_for('perfil_paciente', id=paciente.id))
-        except Exception as e:
-            db.session.rollback()
-            flash('Erro ao registrar tratamento. Tente novamente.', 'error')
-            app.logger.error(f'Erro ao registrar tratamento: {e}')
+    #if form.validate_on_submit():
+    paciente = Paciente.query.get_or_404(form.paciente_id.data)
     
-    # If form validation fails, redirect back with errors
-    for field, errors in form.errors.items():
-        for error in errors:
-            flash(f'{field}: {error}', 'error')
+    tratamento = Tratamento(
+        paciente_id=paciente.id,
+        nome_completo=paciente.nome_completo,
+        queixa_principal=form.queixa_principal.data.strip() if form.queixa_principal.data else None,
+        como=form.como.data.strip() if form.como.data else None,
+        onde=form.onde.data.strip() if form.onde.data else None,
+        exames_complementares=form.exames_complementares.data.strip() if form.exames_complementares.data else None,
+        antecedentes=form.antecedentes.data.strip() if form.antecedentes.data else None,
+        tratamentos_anteriores=form.tratamentos_anteriores.data.strip() if form.tratamentos_anteriores.data else None,
+        qualidade_sono=form.qualidade_sono.data.strip() if form.qualidade_sono.data else None,
+        movimentos=form.movimentos.data.strip() if form.movimentos.data else None,
+        irradiacoes=form.irradiacoes.data.strip() if form.irradiacoes.data else None,
+        conclusoes_tratamento=form.conclusoes_tratamento.data.strip() if form.conclusoes_tratamento.data else None,
+        data_retorno=form.data_retorno.data,
+        retorno=form.retorno.data.strip() if form.retorno.data else None
+    )
+    
+    try:
+        db.session.add(tratamento)
+        db.session.commit()
+        flash(f'Tratamento para {paciente.nome_completo} registrado com sucesso!', 'success')
+        return redirect(url_for('perfil_paciente', id=paciente.id))
+    except Exception as e:
+        db.session.rollback()
+        flash('Erro ao registrar tratamento. Tente novamente.', 'error')
+        app.logger.error(f'Erro ao registrar tratamento: {e}')
+    
+    ## If form validation fails, redirect back with errors
+    #for field, errors in form.errors.items():
+    #    for error in errors:
+    #        flash(f'{field}: {error}', 'error')
     
     return redirect(url_for('novo_tratamento', paciente_id=form.paciente_id.data))
 
