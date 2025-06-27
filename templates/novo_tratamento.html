@@ -39,14 +39,14 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('salvar_tratamento') }}" id="novoTratamentoForm" data-auto-save>
+                <form method="POST" action="{{ url_for('salvar_tratamento') }}" id="novoTratamentoForm" autocomplete="off">
                     {{ form.hidden_tag() }}
                     
                     <!-- Patient Selection -->
                     <div class="row mb-4">
                         <div class="col-12">
                             {{ form.paciente_id.label(class="form-label required") }}
-                            {{ form.paciente_id(class="form-select required-field") }}
+                            {{ form.paciente_id(class="form-select required-field", disabled=paciente_selecionado is not none) }}
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -155,9 +155,6 @@
                             <i class="fas fa-times me-2"></i>Cancelar
                         </button>
                         <div>
-                            <button type="button" class="btn btn-outline-primary me-2" onclick="saveDraft()">
-                                <i class="fas fa-save me-2"></i>Salvar Rascunho
-                            </button>
                             <button type="submit" class="btn btn-success btn-lg">
                                 <i class="fas fa-check me-2"></i>Registrar Tratamento
                             </button>
@@ -187,6 +184,11 @@ $(document).ready(function() {
     
     // Auto-focus on first field
     $('#paciente_id').focus();
+
+    // Set selected patient if available
+    {% if paciente_selecionado %}
+    $('#paciente_id').val('{{ paciente_selecionado.id }}').trigger('change');
+    {% endif %}
     
     // Character counter for text areas
     $('textarea').each(function() {
@@ -220,21 +222,5 @@ $(document).ready(function() {
         }
     });
 });
-
-// Save draft function
-function saveDraft() {
-    const formId = 'novoTratamentoForm';
-    autoSaveForm(formId);
-    showAlert('Rascunho salvo com sucesso!', 'success');
-}
-
-// Auto-save every 30 seconds
-setInterval(function() {
-    if ($('#novoTratamentoForm input, #novoTratamentoForm textarea, #novoTratamentoForm select').filter(function() {
-        return $(this).val() !== '';
-    }).length > 1) {
-        autoSaveForm('novoTratamentoForm');
-    }
-}, 30000);
 </script>
 {% endblock %}

@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, TextAreaField, IntegerField, SelectField, DateField
+from wtforms import StringField, TextAreaField, IntegerField, SelectField, DateField, HiddenField
 from wtforms.validators import DataRequired, Email, Optional, Length
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
@@ -26,7 +26,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Forms
 class PacienteForm(FlaskForm):
     nome_completo = StringField('Nome Completo', validators=[DataRequired(), Length(min=2, max=200)])
-    cpf = StringField('CPF', validators=[Optional(), Length(min=11, max=14)])
+    cpf = StringField('CPF', validators=[Optional()])
     profissao = StringField('Profissão', validators=[Optional(), Length(max=100)])
     sexo = SelectField('Sexo', choices=[('', 'Selecione...'), ('Masculino', 'Masculino'), ('Feminino', 'Feminino'), ('Outro', 'Outro')], validators=[Optional()])
     idade = IntegerField('Idade', validators=[Optional()])
@@ -37,7 +37,7 @@ class PacienteForm(FlaskForm):
     notas = TextAreaField('Notas', validators=[Optional(), Length(max=1000)])
 
 class TratamentoForm(FlaskForm):
-    paciente_id = SelectField('Paciente', coerce=int, validators=[DataRequired()])
+    paciente_id = HiddenField('Paciente', validators=[DataRequired()])
     queixa_principal = TextAreaField('Queixa Principal', validators=[Optional(), Length(max=500)])
     como = TextAreaField('Como?', validators=[Optional(), Length(max=500)])
     onde = TextAreaField('Onde?', validators=[Optional(), Length(max=500)])
@@ -48,7 +48,7 @@ class TratamentoForm(FlaskForm):
     movimentos = TextAreaField('Movimentos', validators=[Optional(), Length(max=500)])
     irradiacoes = TextAreaField('Irradiações', validators=[Optional(), Length(max=500)])
     conclusoes_tratamento = TextAreaField('Conclusões e Tratamento', validators=[Optional(), Length(max=1000)])
-    data_retorno = DateField('Data de Retorno', validators=[Optional()])
+    data_retorno = DateField('Data de Retorno', format='%d/%m/%Y', validators=[Optional()])
     retorno = TextAreaField('Retorno', validators=[Optional(), Length(max=500)])
 
 # Routes
@@ -94,7 +94,7 @@ def novo_paciente():
         # Create new patient
         paciente = Paciente(
             nome_completo=form.nome_completo.data.strip().title(),
-            cpf=cpf_clean,
+            cpf=cpf_clean if cpf_clean else None,
             profissao=form.profissao.data.strip() if form.profissao.data else None,
             sexo=form.sexo.data if form.sexo.data else None,
             idade=form.idade.data,
@@ -315,44 +315,41 @@ def novo_tratamento(paciente_id=None):
 def salvar_tratamento():
     form = TratamentoForm()
     
-    # Populate patient choices for validation
-    pacientes = Paciente.query.order_by(Paciente.nome_completo).all()
-    form.paciente_id.choices = [(p.id, p.nome_completo) for p in pacientes]
+    if form.validate_on_submit():
+        paciente_id = request.form.get('paciente_id', type=int)
+        paciente = Paciente.query.get_or_404(paciente_id)
+        
+        tratamento = Tratamento(
+            paciente_id=paciente.id,
+            nome_completo=paciente.nome_completo,
+            queixa_principal=form.queixa_principal.data.strip() if form.queixa_principal.data else None,
+            como=form.como.data.strip() if form.como.data else None,
+            onde=form.onde.data.strip() if form.onde.data else None,
+            exames_complementares=form.exames_complementares.data.strip() if form.exames_complementares.data else None,
+            antecedentes=form.antecedentes.data.strip() if form.antecedentes.data else None,
+            tratamentos_anteriores=form.tratamentos_anteriores.data.strip() if form.tratamentos_anteriores.data else None,
+            qualidade_sono=form.qualidade_sono.data.strip() if form.qualidade_sono.data else None,
+            movimentos=form.movimentos.data.strip() if form.movimentos.data else None,
+            irradiacoes=form.irradiacoes.data.strip() if form.irradiacoes.data else None,
+            conclusoes_tratamento=form.conclusoes_tratamento.data.strip() if form.conclusoes_tratamento.data else None,
+            data_retorno=form.data_retorno.data,
+            retorno=form.retorno.data.strip() if form.retorno.data else None
+        )
+        
+        try:
+            db.session.add(tratamento)
+            db.session.commit()
+            flash(f'Tratamento para {paciente.nome_completo} registrado com sucesso!', 'success')
+            return redirect(url_for('perfil_paciente', id=paciente.id))
+        except Exception as e:
+            db.session.rollback()
+            flash('Erro ao registrar tratamento. Tente novamente.', 'error')
+            app.logger.error(f'Erro ao registrar tratamento: {e}')
     
-    #if form.validate_on_submit():
-    paciente = Paciente.query.get_or_404(form.paciente_id.data)
-    
-    tratamento = Tratamento(
-        paciente_id=paciente.id,
-        nome_completo=paciente.nome_completo,
-        queixa_principal=form.queixa_principal.data.strip() if form.queixa_principal.data else None,
-        como=form.como.data.strip() if form.como.data else None,
-        onde=form.onde.data.strip() if form.onde.data else None,
-        exames_complementares=form.exames_complementares.data.strip() if form.exames_complementares.data else None,
-        antecedentes=form.antecedentes.data.strip() if form.antecedentes.data else None,
-        tratamentos_anteriores=form.tratamentos_anteriores.data.strip() if form.tratamentos_anteriores.data else None,
-        qualidade_sono=form.qualidade_sono.data.strip() if form.qualidade_sono.data else None,
-        movimentos=form.movimentos.data.strip() if form.movimentos.data else None,
-        irradiacoes=form.irradiacoes.data.strip() if form.irradiacoes.data else None,
-        conclusoes_tratamento=form.conclusoes_tratamento.data.strip() if form.conclusoes_tratamento.data else None,
-        data_retorno=form.data_retorno.data,
-        retorno=form.retorno.data.strip() if form.retorno.data else None
-    )
-    
-    try:
-        db.session.add(tratamento)
-        db.session.commit()
-        flash(f'Tratamento para {paciente.nome_completo} registrado com sucesso!', 'success')
-        return redirect(url_for('perfil_paciente', id=paciente.id))
-    except Exception as e:
-        db.session.rollback()
-        flash('Erro ao registrar tratamento. Tente novamente.', 'error')
-        app.logger.error(f'Erro ao registrar tratamento: {e}')
-    
-    ## If form validation fails, redirect back with errors
-    #for field, errors in form.errors.items():
-    #    for error in errors:
-    #        flash(f'{field}: {error}', 'error')
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Erro no campo '{getattr(form, field).label.text}': {error}", 'error')
     
     return redirect(url_for('novo_tratamento', paciente_id=form.paciente_id.data))
 
@@ -361,12 +358,8 @@ def editar_tratamento(id):
     tratamento = Tratamento.query.get_or_404(id)
     form = TratamentoForm(obj=tratamento)
     
-    # Populate patient choices
-    pacientes = Paciente.query.order_by(Paciente.nome_completo).all()
-    form.paciente_id.choices = [(p.id, p.nome_completo) for p in pacientes]
-    
     if form.validate_on_submit():
-        paciente = Paciente.query.get_or_404(form.paciente_id.data)
+        paciente = Paciente.query.get_or_404(tratamento.paciente_id)
         
         # Update treatment data
         tratamento.paciente_id = paciente.id
@@ -394,6 +387,11 @@ def editar_tratamento(id):
             flash('Erro ao atualizar tratamento. Tente novamente.', 'error')
             app.logger.error(f'Erro ao atualizar tratamento: {e}')
     
+    elif request.method == 'POST':
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Erro no campo '{getattr(form, field).label.text}': {error}", 'error')
+
     return render_template('editar_tratamento.html', form=form, tratamento=tratamento)
 
 @app.route('/excluir-tratamento/<int:id>', methods=['POST'])

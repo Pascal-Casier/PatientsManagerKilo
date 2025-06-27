@@ -52,12 +52,12 @@
                 <form method="POST" id="editarTratamentoForm">
                     {{ form.hidden_tag() }}
                     
-                    <!-- Patient Selection -->
+                    <!-- Patient Display -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            {{ form.paciente_id.label(class="form-label required") }}
-                            {{ form.paciente_id(class="form-select required-field") }}
-                            <div class="invalid-feedback"></div>
+                            <label class="form-label">Paciente</label>
+                            <p class="form-control-static"><strong>{{ tratamento.nome_completo }}</strong></p>
+                            <input type="hidden" name="paciente_id" value="{{ tratamento.paciente_id }}">
                         </div>
                     </div>
                     
@@ -149,7 +149,7 @@
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     {{ form.data_retorno.label(class="form-label") }}
-                                    {{ form.data_retorno(class="form-control future-date-picker") }}
+                                    {{ form.data_retorno(class="form-control future-date-picker", type="text") }}
                                 </div>
                                 <div class="col-md-8 mb-3">
                                     {{ form.retorno.label(class="form-label") }}
