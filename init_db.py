@@ -22,9 +22,9 @@ def init_database():
         # Criar todas as tabelas
         db.create_all()
         
-        print("✅ Banco de dados inicializado com sucesso!")
-        print(f"📁 Diretório de uploads criado: {upload_dir}")
-        print("🚀 Sistema pronto para uso!")
+        print("Banco de dados inicializado com sucesso!")
+        print(f"Diretorio de uploads criado: {upload_dir}")
+        print("Sistema pronto para uso!")
 
 if __name__ == '__main__':
     init_database()

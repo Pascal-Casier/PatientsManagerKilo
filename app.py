@@ -1,21 +1,32 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, TextAreaField, IntegerField, SelectField, DateField, HiddenField
-from wtforms.validators import DataRequired, Email, Optional, Length
+from wtforms import StringField, TextAreaField, IntegerField, SelectField, DateField, HiddenField, PasswordField, BooleanField
+from wtforms.validators import DataRequired, Email, Optional, Length, EqualTo, ValidationError
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
 import re
 
 from config import Config
-from database.models import db, Paciente, Tratamento
+from database.models import db, Paciente, Tratamento, User
 from utils.helpers import save_uploaded_file, validate_cpf, format_cpf, format_phone, clean_numeric_input
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    from database.models import User
+    return User.query.get(int(user_id))
 
 # Initialize database
 db.init_app(app)
@@ -24,6 +35,28 @@ db.init_app(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Forms
+class LoginForm(FlaskForm):
+    username = StringField('Nome de Usuário', validators=[DataRequired()])
+    password = PasswordField('Senha', validators=[DataRequired()])
+    remember_me = BooleanField('Lembrar-me')
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Nome de Usuário', validators=[DataRequired(), Length(min=4, max=64)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Senha', validators=[DataRequired()])
+    password2 = PasswordField(
+        'Repita a Senha', validators=[DataRequired(), EqualTo('password')])
+
+    def validate_username(self, username):
+        user = User.query.filter_by(username=username.data).first()
+        if user is not None:
+            raise ValidationError('Por favor, use um nome de usuário diferente.')
+
+    def validate_email(self, email):
+        user = User.query.filter_by(email=email.data).first()
+        if user is not None:
+            raise ValidationError('Por favor, use um endereço de e-mail diferente.')
+
 class PacienteForm(FlaskForm):
     nome_completo = StringField('Nome Completo', validators=[DataRequired(), Length(min=2, max=200)])
     cpf = StringField('CPF', validators=[Optional()])
@@ -52,15 +85,50 @@ class TratamentoForm(FlaskForm):
     retorno = TextAreaField('Retorno', validators=[Optional(), Length(max=500)])
 
 # Routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is None or not user.check_password(form.password.data):
+            flash('Nome de usuário ou senha inválidos', 'error')
+            return redirect(url_for('login'))
+        login_user(user, remember=form.remember_me.data)
+        return redirect(url_for('index'))
+    return render_template('login.html', form=form)
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data, email=form.email.data)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash('Parabéns, você está registrado!', 'success')
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
+
 @app.route('/')
+@login_required
 def index():
     # Get statistics
-    total_pacientes = Paciente.query.count()
-    total_tratamentos = Tratamento.query.count()
+    total_pacientes = Paciente.query.filter_by(user_id=current_user.id).count()
+    total_tratamentos = Tratamento.query.filter_by(user_id=current_user.id).count()
     
     # Get recent activities
-    pacientes_recentes = Paciente.query.order_by(Paciente.created_at.desc()).limit(5).all()
-    tratamentos_recentes = Tratamento.query.order_by(Tratamento.created_at.desc()).limit(5).all()
+    pacientes_recentes = Paciente.query.filter_by(user_id=current_user.id).order_by(Paciente.created_at.desc()).limit(5).all()
+    tratamentos_recentes = Tratamento.query.filter_by(user_id=current_user.id).order_by(Tratamento.created_at.desc()).limit(5).all()
     
     return render_template('index.html', 
                          total_pacientes=total_pacientes,
@@ -69,6 +137,7 @@ def index():
                          tratamentos_recentes=tratamentos_recentes)
 
 @app.route('/novo-paciente', methods=['GET', 'POST'])
+@login_required
 def novo_paciente():
     form = PacienteForm()
     
@@ -102,7 +171,8 @@ def novo_paciente():
             telefone=clean_numeric_input(form.telefone.data) if form.telefone.data else None,
             email=form.email.data.strip().lower() if form.email.data else None,
             foto_path=foto_filename,
-            notas=form.notas.data.strip() if form.notas.data else None
+            notas=form.notas.data.strip() if form.notas.data else None,
+            user_id=current_user.id
         )
         
         try:
@@ -139,6 +209,7 @@ def pesquisar_pacientes():
     return render_template('pesquisar_pacientes.html', pacientes=pacientes)
 
 @app.route('/api/pesquisar-pacientes')
+@login_required
 def api_pesquisar_pacientes():
     nome = request.args.get('nome', '').strip()
     cpf = request.args.get('cpf', '').strip()
@@ -146,7 +217,7 @@ def api_pesquisar_pacientes():
     pacientes = []
 
     if nome or cpf:
-        query = Paciente.query
+        query = Paciente.query.filter_by(user_id=current_user.id)
 
         if nome:
             query = query.filter(Paciente.nome_completo.ilike(f'%{nome}%'))
@@ -170,18 +241,20 @@ def api_pesquisar_pacientes():
     return jsonify(pacientes_list)
 
 @app.route('/paciente/<int:id>')
+@login_required
 def perfil_paciente(id):
-    paciente = Paciente.query.get_or_404(id)
-    tratamentos = Tratamento.query.filter_by(paciente_id=id).order_by(Tratamento.data_tratamento.desc()).all()
+    paciente = Paciente.query.filter_by(id=id, user_id=current_user.id).first_or_404(id)
+    tratamentos = Tratamento.query.filter_by(paciente_id=id, user_id=current_user.id).order_by(Tratamento.data_tratamento.desc()).all()
     
     return render_template('perfil_paciente.html', paciente=paciente, tratamentos=tratamentos)
 
 @app.route('/tratamentos')
+@login_required
 def tratamentos():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    tratamentos = Tratamento.query.order_by(Tratamento.data_tratamento.desc()).paginate(
+    tratamentos = Tratamento.query.filter_by(user_id=current_user.id).order_by(Tratamento.data_tratamento.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
@@ -411,8 +484,9 @@ def excluir_tratamento(id):
     return redirect(url_for('perfil_paciente', id=paciente_id))
 
 @app.route('/editar-paciente/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_paciente(id):
-    paciente = Paciente.query.get_or_404(id)
+    paciente = Paciente.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     form = PacienteForm(obj=paciente)
     
     if form.validate_on_submit():

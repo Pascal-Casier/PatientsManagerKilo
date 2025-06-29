@@ -286,62 +286,7 @@ function exportToCSV() {
     showAlert('Funcionalidade de exportação em desenvolvimento', 'info');
 }
 
-// Auto-save form data to localStorage
-function autoSaveForm(formId) {
-    const form = $(`#${formId}`);
-    const formData = {};
-    
-    form.find('input, textarea, select').each(function() {
-        const field = $(this);
-        const name = field.attr('name');
-        if (name && field.attr('type') !== 'file') {
-            formData[name] = field.val();
-        }
-    });
-    
-    localStorage.setItem(`form_${formId}`, JSON.stringify(formData));
-}
-
-// Restore form data from localStorage
-function restoreFormData(formId) {
-    const savedData = localStorage.getItem(`form_${formId}`);
-    if (savedData) {
-        const formData = JSON.parse(savedData);
-        const form = $(`#${formId}`);
-        
-        Object.keys(formData).forEach(function(name) {
-            const field = form.find(`[name="${name}"]`);
-            if (field.length) {
-                field.val(formData[name]);
-            }
-        });
-    }
-}
-
 // Clear saved form data
 function clearSavedFormData(formId) {
     localStorage.removeItem(`form_${formId}`);
 }
-
-// Initialize auto-save for forms
-$(document).ready(function() {
-    $('form[data-auto-save]').each(function() {
-        const formId = $(this).attr('id');
-        if (formId) {
-            // Restore data on page load
-            restoreFormData(formId);
-            
-            // Save data on input change
-            $(this).on('input change', function() {
-                autoSaveForm(formId);
-            });
-            
-            // Clear saved data on successful submit
-            $(this).on('submit', function() {
-                setTimeout(function() {
-                    clearSavedFormData(formId);
-                }, 1000);
-            });
-        }
-    });
-});
