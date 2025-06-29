@@ -140,6 +140,9 @@ def index():
 @app.route('/novo-paciente', methods=['GET', 'POST'])
 @login_required
 def novo_paciente():
+    if Paciente.query.filter_by(user_id=current_user.id).count() >= 30:
+        flash('A versão de demonstração está limitada a 30 pacientes.', 'warning')
+        return redirect(url_for('pesquisar_pacientes'))
     form = PacienteForm()
     
     if form.validate_on_submit():
@@ -591,5 +594,13 @@ def create_tables():
         db.create_all()
 
 if __name__ == '__main__':
+    import webbrowser
+    from threading import Timer
+    from waitress import serve
+
+    def open_browser():
+        webbrowser.open_new('http://127.0.0.1:5000')
+
     create_tables()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    Timer(1, open_browser).start()
+    serve(app, host='127.0.0.1', port=5000)
