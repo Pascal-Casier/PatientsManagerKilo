@@ -253,7 +253,7 @@ $(document).ready(function() {
             $.ajax({
                 url: '/api/pesquisar-pacientes',
                 type: 'GET',
-                data: { nome: searchTerm },
+                data: { nome: searchTerm, cpf: searchTerm },
                 dataType: 'json',
                 success: function(data) {
                     // Clear previous results

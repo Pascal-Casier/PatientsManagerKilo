@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, TextAreaField, IntegerField, SelectField, DateField, HiddenField, PasswordField, BooleanField
@@ -12,7 +13,7 @@ import re
 
 from config import Config
 from database.models import db, Paciente, Tratamento, User
-from utils.helpers import save_uploaded_file, validate_cpf, format_cpf, format_phone, clean_numeric_input
+from utils.helpers import save_uploaded_file, validate_cpf, format_cpf, format_phone, clean_numeric_input, normalize_text
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -220,11 +221,11 @@ def api_pesquisar_pacientes():
         query = Paciente.query.filter_by(user_id=current_user.id)
 
         if nome:
-            query = query.filter(Paciente.nome_completo.ilike(f'%{nome}%'))
-
-        if cpf:
-            cpf_clean = clean_numeric_input(cpf)
-            query = query.filter(Paciente.cpf.like(f'%{cpf_clean}%'))
+            search_term = normalize_text(nome)
+            query = query.filter(or_(
+                Paciente.nome_completo.ilike(f'%{search_term}%'),
+                Paciente.cpf.ilike(f'%{search_term}%')
+            ))
 
         pacientes = query.order_by(Paciente.nome_completo).all()
 
@@ -394,6 +395,7 @@ def salvar_tratamento():
         
         tratamento = Tratamento(
             paciente_id=paciente.id,
+            user_id=current_user.id,
             nome_completo=paciente.nome_completo,
             queixa_principal=form.queixa_principal.data.strip() if form.queixa_principal.data else None,
             como=form.como.data.strip() if form.como.data else None,
