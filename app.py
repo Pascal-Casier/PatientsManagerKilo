@@ -2,15 +2,16 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, TextAreaField, IntegerField, SelectField, DateField, HiddenField
-from wtforms.validators import DataRequired, Email, Optional, Length
+from wtforms import StringField, TextAreaField, IntegerField, SelectField, DateField, HiddenField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Email, Optional, Length, EqualTo
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
 import re
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 from config import Config
-from database.models import db, Paciente, Tratamento
+from database.models import db, Paciente, Tratamento, User
 from utils.helpers import save_uploaded_file, validate_cpf, format_cpf, format_phone, clean_numeric_input
 
 # Initialize Flask app
@@ -20,10 +21,28 @@ app.config.from_object(Config)
 # Initialize database
 db.init_app(app)
 
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Por favor, faça login para acessar esta página.'
+login_manager.login_message_category = 'info'
+
 # Create upload directory
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Forms
+class LoginForm(FlaskForm):
+    username = StringField('Usuário', validators=[DataRequired()])
+    password = PasswordField('Senha', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Usuário', validators=[DataRequired()])
+    password = PasswordField('Senha', validators=[DataRequired()])
+    password2 = PasswordField('Confirmar Senha', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Registrar')
+
 class PacienteForm(FlaskForm):
     nome_completo = StringField('Nome Completo', validators=[DataRequired(), Length(min=2, max=200)])
     cpf = StringField('CPF', validators=[Optional()])
@@ -52,15 +71,49 @@ class TratamentoForm(FlaskForm):
     retorno = TextAreaField('Retorno', validators=[Optional(), Length(max=500)])
 
 # Routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is None or not user.check_password(form.password.data):
+            flash('Usuário ou senha inválidos', 'danger')
+            return redirect(url_for('login'))
+        login_user(user)
+        return redirect(url_for('index'))
+    return render_template('login.html', form=form)
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash('Parabéns, você foi registrado com sucesso!', 'success')
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
+
 @app.route('/')
+@login_required
 def index():
-    # Get statistics
-    total_pacientes = Paciente.query.count()
-    total_tratamentos = Tratamento.query.count()
+    # Get statistics for the current user
+    total_pacientes = Paciente.query.filter_by(user_id=current_user.id).count()
+    total_tratamentos = Tratamento.query.join(Paciente).filter(Paciente.user_id == current_user.id).count()
     
-    # Get recent activities
-    pacientes_recentes = Paciente.query.order_by(Paciente.created_at.desc()).limit(5).all()
-    tratamentos_recentes = Tratamento.query.order_by(Tratamento.created_at.desc()).limit(5).all()
+    # Get recent activities for the current user
+    pacientes_recentes = Paciente.query.filter_by(user_id=current_user.id).order_by(Paciente.created_at.desc()).limit(5).all()
+    tratamentos_recentes = Tratamento.query.join(Paciente).filter(Paciente.user_id == current_user.id).order_by(Tratamento.created_at.desc()).limit(5).all()
     
     return render_template('index.html', 
                          total_pacientes=total_pacientes,
@@ -93,6 +146,7 @@ def novo_paciente():
         
         # Create new patient
         paciente = Paciente(
+            user_id=current_user.id,
             nome_completo=form.nome_completo.data.strip().title(),
             cpf=cpf_clean if cpf_clean else None,
             profissao=form.profissao.data.strip() if form.profissao.data else None,
@@ -125,7 +179,7 @@ def pesquisar_pacientes():
     pacientes = []
     
     if nome or cpf:
-        query = Paciente.query
+        query = Paciente.query.filter_by(user_id=current_user.id)
         
         if nome:
             query = query.filter(Paciente.nome_completo.ilike(f'%{nome}%'))
@@ -146,7 +200,7 @@ def api_pesquisar_pacientes():
     pacientes = []
 
     if nome or cpf:
-        query = Paciente.query
+        query = Paciente.query.filter_by(user_id=current_user.id)
 
         if nome:
             query = query.filter(Paciente.nome_completo.ilike(f'%{nome}%'))
@@ -170,27 +224,30 @@ def api_pesquisar_pacientes():
     return jsonify(pacientes_list)
 
 @app.route('/paciente/<int:id>')
+@login_required
 def perfil_paciente(id):
-    paciente = Paciente.query.get_or_404(id)
+    paciente = Paciente.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     tratamentos = Tratamento.query.filter_by(paciente_id=id).order_by(Tratamento.data_tratamento.desc()).all()
     
     return render_template('perfil_paciente.html', paciente=paciente, tratamentos=tratamentos)
 
 @app.route('/tratamentos')
+@login_required
 def tratamentos():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    tratamentos = Tratamento.query.order_by(Tratamento.data_tratamento.desc()).paginate(
+    tratamentos = Tratamento.query.join(Paciente).filter(Paciente.user_id == current_user.id).order_by(Tratamento.data_tratamento.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
     return render_template('tratamentos.html', tratamentos=tratamentos)
 
 @app.route('/arquivos')
+@login_required
 def arquivos():
-    # Get all patients for file organization
-    pacientes = Paciente.query.order_by(Paciente.nome_completo).all()
+    # Get all patients for the current user for file organization
+    pacientes = Paciente.query.filter_by(user_id=current_user.id).order_by(Paciente.nome_completo).all()
     
     # Get uploaded files from uploads directory
     upload_dir = app.config['UPLOAD_FOLDER']
@@ -223,6 +280,7 @@ def arquivos():
     return render_template('arquivos.html', arquivos=arquivos_sistema, pacientes=pacientes)
 
 @app.route('/upload-arquivo', methods=['POST'])
+@login_required
 def upload_arquivo():
     if 'arquivo' not in request.files:
         flash('Nenhum arquivo selecionado.', 'error')
@@ -235,6 +293,11 @@ def upload_arquivo():
     if file.filename == '':
         flash('Nenhum arquivo selecionado.', 'error')
         return redirect(url_for('arquivos'))
+
+    # Verify patient ownership if a patient is selected
+    if paciente_id:
+        paciente = Paciente.query.filter_by(id=paciente_id, user_id=current_user.id).first_or_404()
+
     
     # Validate file type (allow documents and images)
     allowed_extensions = {'pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'gif'}
@@ -264,7 +327,18 @@ def upload_arquivo():
     return redirect(url_for('arquivos'))
 
 @app.route('/download-arquivo/<filename>')
+@login_required
 def download_arquivo(filename):
+    # First, find which patient this file is associated with.
+    # This assumes the file is a patient's photo.
+    paciente = Paciente.query.filter_by(foto_path=filename, user_id=current_user.id).first()
+
+    # If the file is not a photo of one of the user's patients, deny access.
+    # Note: This logic needs to be expanded if files can be associated in other ways.
+    if not paciente:
+        flash('Acesso negado ao arquivo.', 'error')
+        return redirect(url_for('arquivos'))
+
     try:
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
     except FileNotFoundError:
@@ -272,14 +346,27 @@ def download_arquivo(filename):
         return redirect(url_for('arquivos'))
 
 @app.route('/excluir-arquivo/<filename>', methods=['POST'])
+@login_required
 def excluir_arquivo(filename):
     try:
-        # Check if file is a patient photo
-        paciente_com_foto = Paciente.query.filter_by(foto_path=filename).first()
+        # Check if file is a patient photo and belongs to the current user
+        paciente_com_foto = Paciente.query.filter_by(foto_path=filename, user_id=current_user.id).first()
         if paciente_com_foto:
-            flash('Não é possível excluir a foto de um paciente. Exclua ou edite o paciente primeiro.', 'error')
+            flash('Não é possível excluir a foto de um paciente por aqui. Edite o paciente para remover a foto.', 'error')
             return redirect(url_for('arquivos'))
-        
+
+        # Add more checks here if files can be linked in other ways
+        # For now, we assume only non-photo files that don't have a direct patient link can be deleted,
+        # but there is no logic to check ownership for them. This is a potential security hole.
+        # A better implementation would be a dedicated File model with a user_id.
+
+        # As a basic security measure, we re-check if the file is linked to ANY patient photo.
+        # This prevents a user from deleting another user's photo via this route.
+        any_patient_with_photo = Paciente.query.filter_by(foto_path=filename).first()
+        if any_patient_with_photo:
+             flash('Acesso negado.', 'error')
+             return redirect(url_for('arquivos'))
+
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -294,30 +381,36 @@ def excluir_arquivo(filename):
 
 @app.route('/novo-tratamento')
 @app.route('/novo-tratamento/<int:paciente_id>')
+@login_required
 def novo_tratamento(paciente_id=None):
     form = TratamentoForm()
     
-    # Populate patient choices
-    pacientes = Paciente.query.order_by(Paciente.nome_completo).all()
+    # Populate patient choices for the current user
+    pacientes = Paciente.query.filter_by(user_id=current_user.id).order_by(Paciente.nome_completo).all()
     form.paciente_id.choices = [(p.id, p.nome_completo) for p in pacientes]
     
-    # Pre-select patient if provided
+    # Pre-select patient if provided and check ownership
     if paciente_id:
-        form.paciente_id.data = paciente_id
-    
-    paciente_selecionado = None
-    if paciente_id:
-        paciente_selecionado = Paciente.query.get_or_404(paciente_id)
+        paciente_selecionado = Paciente.query.filter_by(id=paciente_id, user_id=current_user.id).first_or_404()
+        form.paciente_id.data = paciente_selecionado.id
+    else:
+        paciente_selecionado = None
     
     return render_template('novo_tratamento.html', form=form, paciente_selecionado=paciente_selecionado)
 
 @app.route('/salvar-tratamento', methods=['POST'])
+@login_required
 def salvar_tratamento():
     form = TratamentoForm()
     
+    # Ensure patient choices are loaded for the current user in case of form error
+    pacientes = Paciente.query.filter_by(user_id=current_user.id).order_by(Paciente.nome_completo).all()
+    form.paciente_id.choices = [(p.id, p.nome_completo) for p in pacientes]
+
     if form.validate_on_submit():
         paciente_id = request.form.get('paciente_id', type=int)
-        paciente = Paciente.query.get_or_404(paciente_id)
+        # Verify patient ownership
+        paciente = Paciente.query.filter_by(id=paciente_id, user_id=current_user.id).first_or_404()
         
         tratamento = Tratamento(
             paciente_id=paciente.id,
@@ -354,12 +447,18 @@ def salvar_tratamento():
     return redirect(url_for('novo_tratamento', paciente_id=form.paciente_id.data))
 
 @app.route('/editar-tratamento/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_tratamento(id):
-    tratamento = Tratamento.query.get_or_404(id)
+    tratamento = Tratamento.query.join(Paciente).filter(Tratamento.id == id, Paciente.user_id == current_user.id).first_or_404()
     form = TratamentoForm(obj=tratamento)
     
+    # Ensure patient choices are loaded for the current user
+    pacientes = Paciente.query.filter_by(user_id=current_user.id).order_by(Paciente.nome_completo).all()
+    form.paciente_id.choices = [(p.id, p.nome_completo) for p in pacientes]
+    
     if form.validate_on_submit():
-        paciente = Paciente.query.get_or_404(tratamento.paciente_id)
+        # Verify patient ownership again before saving
+        paciente = Paciente.query.filter_by(id=tratamento.paciente_id, user_id=current_user.id).first_or_404()
         
         # Update treatment data
         tratamento.paciente_id = paciente.id
@@ -395,8 +494,9 @@ def editar_tratamento(id):
     return render_template('editar_tratamento.html', form=form, tratamento=tratamento)
 
 @app.route('/excluir-tratamento/<int:id>', methods=['POST'])
+@login_required
 def excluir_tratamento(id):
-    tratamento = Tratamento.query.get_or_404(id)
+    tratamento = Tratamento.query.join(Paciente).filter(Tratamento.id == id, Paciente.user_id == current_user.id).first_or_404()
     paciente_id = tratamento.paciente_id
     
     try:
@@ -411,8 +511,9 @@ def excluir_tratamento(id):
     return redirect(url_for('perfil_paciente', id=paciente_id))
 
 @app.route('/editar-paciente/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_paciente(id):
-    paciente = Paciente.query.get_or_404(id)
+    paciente = Paciente.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     form = PacienteForm(obj=paciente)
     
     if form.validate_on_submit():
@@ -464,8 +565,9 @@ def editar_paciente(id):
     return render_template('editar_paciente.html', form=form, paciente=paciente)
 
 @app.route('/excluir-paciente/<int:id>', methods=['POST'])
+@login_required
 def excluir_paciente(id):
-    paciente = Paciente.query.get_or_404(id)
+    paciente = Paciente.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     
     try:
         # Delete photo if exists
@@ -494,10 +596,15 @@ def format_cpf_filter(cpf):
 def format_phone_filter(phone):
     return format_phone(phone) if phone else ''
 
+# User loader
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 # Template context processors
 @app.context_processor
-def inject_today():
-    return {'today': date.today()}
+def inject_user_and_today():
+    return {'today': date.today(), 'current_user': current_user}
 
 # Error handlers
 @app.errorhandler(404)
