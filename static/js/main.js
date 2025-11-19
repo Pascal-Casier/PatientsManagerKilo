@@ -8,6 +8,11 @@ $(document).ready(function() {
     initializeMasks();
     initializeTooltips();
     
+    // Initialize search if on the correct page
+    if ($('#searchInput').length) {
+        initializeLiveSearch();
+    }
+
     // Add fade-in animation to cards
     $('.card').addClass('fade-in');
 });
@@ -262,18 +267,101 @@ function hideLoading() {
 }
 
 // Search functionality
-function initializeSearch() {
-    $('#searchInput').on('input', function() {
-        const searchTerm = $(this).val().toLowerCase();
-        $('.search-result-item').each(function() {
-            const text = $(this).text().toLowerCase();
-            if (text.includes(searchTerm)) {
-                $(this).show();
-            } else {
-                $(this).hide();
+function initializeLiveSearch() {
+    const searchInput = $('#searchInput');
+    const patientList = $('#patientList');
+    const loadingState = $('#loadingState');
+    const noResultsState = $('#noResultsState');
+    let searchTimeout;
+
+    const renderPatients = (patients) => {
+        patientList.empty();
+        if (patients.length === 0) {
+            noResultsState.show();
+        } else {
+            noResultsState.hide();
+            patients.forEach(paciente => {
+                const fotoUrl = paciente.foto_path 
+                    ? `/static/uploads/${paciente.foto_path}` 
+                    : `/static/uploads/default.png`; // Assuming you have a default avatar
+
+                const pacienteHtml = `
+                    <div class="search-result-item">
+                        <div class="row align-items-center">
+                            <div class="col-md-1 text-center">
+                                <img src="${fotoUrl}" alt="Foto de ${paciente.nome_completo}" class="patient-avatar">
+                            </div>
+                            <div class="col-md-5">
+                                <h6 class="mb-1">${paciente.nome_completo}</h6>
+                                <p class="mb-1 text-muted">
+                                    <i class="fas fa-id-card me-1"></i>CPF: ${paciente.cpf ? formatCpf(paciente.cpf) : 'Não informado'}
+                                </p>
+                                ${paciente.telefone ? `<p class="mb-0 text-muted"><i class="fas fa-phone me-1"></i>${formatPhone(paciente.telefone)}</p>` : ''}
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    Cadastrado em<br>
+                                    ${paciente.data_registro}
+                                </small>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <div class="btn-group" role="group">
+                                    <a href="/paciente/${paciente.id}" class="btn btn-primary btn-sm" title="Ver Perfil">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="/novo-tratamento/${paciente.id}" class="btn btn-success btn-sm" title="Novo Tratamento">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+                                    <a href="/editar-paciente/${paciente.id}" class="btn btn-info btn-sm" title="Editar Paciente">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                patientList.append(pacienteHtml);
+            });
+        }
+    };
+
+    const fetchPatients = (query) => {
+        loadingState.show();
+        noResultsState.hide();
+        patientList.empty();
+
+        $.ajax({
+            url: '/api/pesquisar-pacientes',
+            type: 'GET',
+            data: { q: query },
+            dataType: 'json',
+            success: function(data) {
+                renderPatients(data);
+            },
+            error: function() {
+                patientList.html('<div class="alert alert-danger text-center">Erro ao buscar pacientes. Tente novamente.</div>');
+            },
+            complete: function() {
+                loadingState.hide();
             }
         });
+    };
+
+    $('#searchInput').on('input', function() {
+        const searchTerm = $(this).val().trim();
+        clearTimeout(searchTimeout);
+        
+        searchTimeout = setTimeout(() => {
+            fetchPatients(searchTerm);
+        }, 300); // Debounce de 300ms para evitar muitas requisições
     });
+
+    // Carrega todos os pacientes inicialmente
+    fetchPatients('');
+
+    // Foco automático no campo de busca
+    searchInput.focus();
 }
 
 // Print function
@@ -345,3 +433,19 @@ $(document).ready(function() {
         }
     });
 });
+
+// Funções de formatação para uso no JS
+function formatCpf(cpf) {
+    if (!cpf) return '';
+    cpf = cpf.replace(/\D/g, '');
+    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+}
+
+function formatPhone(phone) {
+    if (!phone) return '';
+    phone = phone.replace(/\D/g, '');
+    if (phone.length === 11) {
+        return phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+    return phone.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+}
