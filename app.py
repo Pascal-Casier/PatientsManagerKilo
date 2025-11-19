@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
@@ -8,6 +8,8 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
 import re
+import zipfile
+import io
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 from config import Config
@@ -615,6 +617,77 @@ def not_found_error(error):
 def internal_error(error):
     db.session.rollback()
     return render_template('errors/500.html'), 500
+
+# Backup and Restore Routes
+@app.route('/backup')
+@login_required
+def backup():
+    return render_template('backup.html')
+
+@app.route('/export')
+@login_required
+def export_data():
+    # Create an in-memory zip file
+    memory_file = io.BytesIO()
+    
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # 1. Add database file
+        db_path = app.config['DATABASE_FILE_PATH']
+        if os.path.exists(db_path):
+            # Preserve the folder structure (e.g., 'database/database.db')
+            arcname = os.path.relpath(db_path, app.root_path)
+            zf.write(db_path, arcname)
+        
+        # 2. Add uploaded files
+        upload_folder = app.config['UPLOAD_FOLDER']
+        for root, _, files in os.walk(upload_folder):
+            for file in files:
+                file_path = os.path.join(root, file)
+                # Arcname is the path inside the zip file
+                arcname = os.path.relpath(file_path, app.root_path)
+                zf.write(file_path, arcname)
+
+    memory_file.seek(0)
+    
+    return send_file(
+        memory_file,
+        download_name=f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+        as_attachment=True,
+        mimetype='application/zip'
+    )
+
+@app.route('/import', methods=['POST'])
+@login_required
+def import_data():
+    if 'file' not in request.files:
+        flash('Nenhum arquivo selecionado.', 'danger')
+        return redirect(url_for('backup'))
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        flash('Nenhum arquivo selecionado.', 'danger')
+        return redirect(url_for('backup'))
+    
+    if file and file.filename.endswith('.zip'):
+        try:
+            # To be safe, we should stop the app, replace files, and restart.
+            # For simplicity here, we'll extract directly.
+            # WARNING: This will overwrite current data.
+            with zipfile.ZipFile(file, 'r') as zf:
+                # Extract all files to the root path of the application
+                zf.extractall(path=app.root_path)
+            
+            flash('Dados importados com sucesso! A aplicação pode precisar ser reiniciada.', 'success')
+        except Exception as e:
+            flash(f'Ocorreu um erro ao importar o arquivo: {e}', 'danger')
+            app.logger.error(f"Erro na importação do backup: {e}")
+
+    else:
+        flash('Por favor, selecione um arquivo .zip válido.', 'warning')
+
+    return redirect(url_for('backup'))
+
 
 # Create database tables
 def create_tables():

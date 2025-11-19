@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Importar/Exportar Dados{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Importar e Exportar Dados</h1>
+
+    <!-- Seção de Exportação -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Exportar Dados</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                Clique no botão abaixo para fazer o download de um arquivo <code>.zip</code> contendo todos os dados da sua aplicação.
+                Este arquivo inclui a base de dados (pacientes, tratamentos, etc.) e todos os arquivos de upload (fotos, documentos).
+            </p>
+            <p>Guarde este arquivo em um local seguro.</p>
+            <a href="{{ url_for('export_data') }}" class="btn btn-primary">
+                <i class="fas fa-download"></i> Exportar Backup
+            </a>
+        </div>
+    </div>
+
+    <!-- Seção de Importação -->
+    <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+            <h3>Importar Dados</h3>
+        </div>
+        <div class="card-body">
+            <p class="font-weight-bold text-danger">
+                <i class="fas fa-exclamation-triangle"></i> Atenção: A importação de um arquivo de backup substituirá permanentemente todos os dados existentes na aplicação.
+            </p>
+            <p>
+                Use esta função para restaurar dados de um backup anterior. Envie o arquivo <code>.zip</code> que você exportou anteriormente.
+            </p>
+            <form action="{{ url_for('import_data') }}" method="post" enctype="multipart/form-data" onsubmit="return confirm('Tem certeza de que deseja substituir todos os dados atuais por este backup? Esta ação não pode ser desfeita.');">
+                <div class="form-group">
+                    <label for="file">Selecione o arquivo de backup (.zip)</label>
+                    <input type="file" name="file" class="form-control-file" id="file" accept=".zip" required>
+                </div>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-upload"></i> Importar e Substituir Dados
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
